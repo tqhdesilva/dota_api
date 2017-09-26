@@ -29,7 +29,7 @@ def get_match_sequence(game_mode, start_at_match_sequence, matches_requested, en
                                                     matches_requested=matches_requested)['matches']
     except:
         # print('Valve shits the bed...')
-        time.sleep(4)
+        time.sleep(2)
         args = (game_mode, start_at_match_sequence, matches_requested, end_seq_num, con)
         return (0, args)
 
