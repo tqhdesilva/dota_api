@@ -8,8 +8,8 @@ from Queue import Queue, Empty, PriorityQueue
 import time
 import sys
 import os
-from data.api_helpers import api_call, get_match_history
-from data.db_helpers import connect, build_db_match_history, build_db_match_details
+from api_helpers import api_call, get_match_history
+from db_helpers import connect, build_db_match_history, build_db_match_details
 
 def task(in_q, out_q, con):
     while True:
@@ -18,39 +18,38 @@ def task(in_q, out_q, con):
         in_q.task_done()
 
 class Worker(object):
-    def __init__(self, task, args=None):
+    def __init__(self, q_in, q_out, task):
         object.__init__(self)
-        self.thread = Thread(target=task, args=args)
+        self.thread = Thread(target=self.taskrunner)
+        self.q_in = q_in
+        self.q_out = q_out
+        self.task = task
         self.thread.daemon = True
         self.thread.start()
+    def taskrunner(self):
+        while True:
+            args = self.q_in.get()
+            result = self.task(*args)
+            if result:
+                self.q_out.put(result)
+            self.q_in.task_done()
+            self.q_out.task_done()
 
 class Scheduler(object):
-    def __init__(self, task_queue, schedule):
+    def __init__(self, n_workers, schedule, task):
         self.schedule = schedule
-        self.task_queue = task_queue
+        self.task_queue = Queue()
         self.heap = PriorityQueue()
         self.thread = Thread(target=self.run_tasks)
+        self.workers = [Worker(self.task_queue, self.heap, task) for i in xrange(n_workers)]
         self.thread.daemon = True
         self.thread.start()
     def run_tasks(self):
         while True:
-            priority, item = self.heap.get()
-            self.task_queue.put(item)
+            priority, args = self.heap.get()
+            self.task_queue.put(args)
             time.sleep(self.schedule)
-
-def append_data(start_match_id, end_match_id, duration, num_workers, con):
-        workers = []
-        q = Queue()
-        scheduler = Scheduler(q, 1)
-        time0 = time.time()
-        for i in xrange(num_workers):
-            workers.append(Worker(task=task, args=(q, scheduler.heap, con)))
-        scheduler.heap.put((3, (get_match_history, start_match_id,
-                                end_match_id, time0, duration)))
-        scheduler.heap.join()
-        q.join()
-        print('done')
-        print('ran for {} seconds'.format(time.time() - time0))
+# task spec: must return priority, valid args
 
 if __name__ == '__main__':
     try:

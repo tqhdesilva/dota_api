@@ -3,7 +3,7 @@ import pandas as pd
 from collections import defaultdict
 import time
 import os
-from data.db_helpers import append_db_match_history, append_db_match_details
+from db_helpers import append_db_match_history, append_db_match_details
 import dota2api
 
 
