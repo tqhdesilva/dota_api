@@ -17,9 +17,11 @@ def build_match_sequence(con):
                        'radiant_win' : pd.Series(dtype='bool'),
                        'game_mode' : pd.Series(dtype='int'),
                        'duration': pd.Series(dtype='int'),
-                       'players': pd.Series()})
+                       'players': pd.Series(),
+                       'picks_bans': pd.Series()})
     df = df.set_index('match_id')
-    df.to_sql('matches', con, dtype={ 'players' : sqlalchemy.types.JSON}, if_exists='replace')
+    df.to_sql('matches', con, dtype={ 'players' : sqlalchemy.types.JSON,
+                                      'picks_bans' : sqlalchemy.types.JSON}, if_exists='replace')
 
 def get_match_sequence(game_mode, start_at_match_sequence, matches_requested, end_seq_num, con):
     try:
@@ -31,8 +33,8 @@ def get_match_sequence(game_mode, start_at_match_sequence, matches_requested, en
         args = (game_mode, start_at_match_sequence, matches_requested, end_seq_num, con)
         return (0, args)
 
-    fields = ['match_id', 'match_seq_num', 'start_time', 'radiant_win', 'players', 'game_mode', 'duration']
-    data = map(lambda x: [x[field] for field in fields], response)
+    fields = ['match_id', 'match_seq_num', 'start_time', 'radiant_win', 'players', 'game_mode', 'duration', 'picks_bans']
+    data = map(lambda x: [x[field] if field in x else None for field in fields], response)
     df = pd.DataFrame(data=data, columns=fields)
     if end_seq_num:
         df = df[df['match_seq_num'] <= end_seq_num]
@@ -44,7 +46,7 @@ def get_match_sequence(game_mode, start_at_match_sequence, matches_requested, en
     cm = df[df['game_mode'] == game_mode][fields].set_index('match_id')
     if not cm.empty:
          cm.to_sql('matches', con,
-                dtype={'players' : sqlalchemy.types.JSON},
+                dtype={'players' : sqlalchemy.types.JSON, 'picks_bans': sqlalchemy.types.JSON},
                 if_exists='append')
 
     args = (game_mode, max_match_seq_num + 1, matches_requested, end_seq_num, con)
