@@ -25,7 +25,7 @@ def build_match_history(con):
 
 def get_match_history(start_at_match_id, end_at_match_id, matches_requested, con):
     try:
-        result = api.get_match_history(start_at_match_id=start_at_match_id)['matches']
+        result = api.get_match_history(start_at_match_id=start_at_match_id, skill=3, min_players=10)['matches']
     except:
         time.sleep(2)
         args = (get_match_history, start_at_match_id, end_at_match_id, matches_requested, con)
