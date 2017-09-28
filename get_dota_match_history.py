@@ -71,18 +71,31 @@ def append_history(start_at_match_id, end_at_match_id, n_workers, con):
     scheduler.heap.put((2, args))
     scheduler.heap.join()
     scheduler.task_queue.join()
+    for worker in scheduler.workers:
+        worker.kill()
+        worker.thread.join()
+    scheduler.kill()
+    scheduler.thread.join()
     print('done')
     print('ran for {} seconds'.format(time.time() - time0))
 
-def append_data(game_mode, start_match_seq_num, end_match_seq_num, num_workers, con):
-    scheduler = Scheduler(n_workers=num_workers, schedule=1, task=get_match_sequence)
+def append_data(game_mode, start_match_seq_num, end_match_seq_num, num_workers,
+                con):
+    scheduler = Scheduler(n_workers=num_workers, schedule=1,
+                          task=get_match_sequence)
     time0 = time.time()
-    args = (game_mode, start_match_seq_num, 1000, end_match_seq_num, con)
+    args = (game_mode,start_match_seq_num, 100, end_match_seq_num, con)
     scheduler.heap.put((1, args))
     scheduler.heap.join()
     scheduler.task_queue.join()
+    for worker in scheduler.workers:
+        worker.kill()
+        worker.thread.join()
+    scheduler.kill()
+    scheduler.thread.join()
     print('done')
     print('ran for {} seconds'.format(time.time() - time0))
+
 
 if __name__ == '__main__':
     try:
