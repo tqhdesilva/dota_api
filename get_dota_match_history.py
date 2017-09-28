@@ -10,49 +10,64 @@ from collections import defaultdict
 
 api = dota2api.Initialise(os.environ['D2_API_KEY'])
 
-def build_match_sequence(con):
+def build_match_history(con):
     df = pd.DataFrame({'match_id': pd.Series(dtype='int'),
+                        'match_seq_num': pd.Series(dtype='int'),
                        'start_time' : pd.Series(dtype='int'),
-                       'match_seq_num' : pd.Series(dtype='int'),
                        'radiant_win' : pd.Series(dtype='bool'),
                        'game_mode' : pd.Series(dtype='int'),
                        'duration': pd.Series(dtype='int'),
-                       'players': pd.Series(),
-                       'picks_bans': pd.Series()})
+                       'players': pd.Series()
+                       })
     df = df.set_index('match_id')
-    df.to_sql('matches', con, dtype={ 'players' : sqlalchemy.types.JSON,
-                                      'picks_bans' : sqlalchemy.types.JSON}, if_exists='replace')
+    df.to_sql('match_history', con, dtype={ 'players' : sqlalchemy.types.JSON},
+              if_exists='replace')
 
-def get_match_sequence(game_mode, start_at_match_sequence, matches_requested, end_seq_num, con):
+def get_match_history(start_at_match_id, end_at_match_id, matches_requested, con):
     try:
-        response = api.get_match_history_by_seq_num(start_at_match_seq_num=start_at_match_sequence,
-                                                    matches_requested=matches_requested)['matches']
+        result = api.get_match_history(start_at_match_id=start_at_match_id)['matches']
     except:
-        # print('Valve shits the bed...')
         time.sleep(2)
-        args = (game_mode, start_at_match_sequence, matches_requested, end_seq_num, con)
-        return (0, args)
-
-    fields = ['match_id', 'match_seq_num', 'start_time', 'radiant_win', 'players', 'game_mode', 'duration', 'picks_bans']
-    data = map(lambda x: [x[field] if field in x else None for field in fields], response)
-    df = pd.DataFrame(data=data, columns=fields)
-    if end_seq_num:
-        df = df[df['match_seq_num'] <= end_seq_num]
-    if df.empty:
+        args = (get_match_history, start_at_match_id, end_at_match_id, matches_requested, con)
+        return [(0, args)]
+    match_ids = map(lambda x: x['match_id'], result)
+    if end_at_match_id:
+        match_ids = filter(lambda x: x >= end_at_match_id, match_ids)
+    if len(match_ids) == 0:
         return
+    argses = [(get_match_details, match_id, con) for match_id in match_ids]
+    next_match_id = min(match_ids) - 1
+    hist_args = (get_match_history, next_match_id, end_at_match_id, matches_requested, con)
+    return [(1, args) for args in argses] + [(2, hist_args)]
 
-    max_match_seq_num = df['match_seq_num'].max()
+def get_match_details(match_id, con):
+    try:
+        result = api.get_match_details(match_id)
+    except:
+        time.sleep(2)
+        args = (get_match_details, match_id, con)
+        return [(0, args)]
+    for x in result:
+        result[x] = [result[x]]
+    df = pd.DataFrame(data=result)
+    df = df[['match_id', 'match_seq_num', 'start_time', 'radiant_win', 'game_mode', 'duration', 'players']]
+    df = df.set_index('match_id')
+    df.to_sql('match_history', con, dtype={ 'players' : sqlalchemy.types.JSON },
+              if_exists='append')
 
-    cm = df[df['game_mode'] == game_mode][fields].set_index('match_id')
-    if not cm.empty:
-         cm.to_sql('matches', con,
-                dtype={'players' : sqlalchemy.types.JSON, 'picks_bans': sqlalchemy.types.JSON},
-                if_exists='append')
-
-    args = (game_mode, max_match_seq_num + 1, matches_requested, end_seq_num, con)
-    return (1, args)
+def getter(func, *args):
+    return func(*args)
 
 
+def append_history(start_at_match_id, end_at_match_id, n_workers, con):
+    scheduler = Scheduler(n_workers=n_workers, schedule=1, task=getter)
+    time0 = time.time()
+    args = (get_match_history, start_at_match_id, end_at_match_id, 1000, con)
+    scheduler.heap.put((2, args))
+    scheduler.heap.join()
+    scheduler.task_queue.join()
+    print('done')
+    print('ran for {} seconds'.format(time.time() - time0))
 
 def append_data(game_mode, start_match_seq_num, end_match_seq_num, num_workers, con):
     scheduler = Scheduler(n_workers=num_workers, schedule=1, task=get_match_sequence)
@@ -78,16 +93,16 @@ if __name__ == '__main__':
                 break
     action = sys.argv[1]
     if action == 'build':
-        build_match_sequence(con)
+        build_match_history(con)
     else:
         try:
-            start_match_id = int(sys.argv[3])
+            start_at_match_id = int(sys.argv[3])
         except IndexError:
-            start_match_id = None
-        if start_match_id == 0:
-            start_match_id = None
+            start_at_match_id = None
+        if start_at_match_id == 0:
+            start_at_match_id = None
         try:
-            end_match_id = int(sys.argv[4])
+            end_at_match_id = int(sys.argv[4])
         except IndexError:
-            end_match_id = None
-        append_data(2, start_match_id, end_match_id, 4, con)
+            end_at_match_id = None
+        append_history(start_at_match_id, end_at_match_id, 4, con)

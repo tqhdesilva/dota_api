@@ -31,7 +31,8 @@ class Worker(object):
             args = self.q_in.get()
             result = self.task(*args)
             if result:
-                self.q_out.put(result)
+                for r in result:
+                    self.q_out.put(r)
             self.q_in.task_done()
             self.q_out.task_done()
 
