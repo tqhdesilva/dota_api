@@ -25,7 +25,9 @@ def build_match_history(con):
 
 def get_match_history(start_at_match_id, end_at_match_id, matches_requested, con):
     try:
-        result = api.get_match_history(start_at_match_id=start_at_match_id, skill=3, min_players=10)['matches']
+        result = api.get_match_history(start_at_match_id=start_at_match_id,
+                                       skill=3, min_players=10,
+                                       matches_requested=matches_requested)['matches']
     except:
         time.sleep(2)
         args = (get_match_history, start_at_match_id, end_at_match_id, matches_requested, con)
@@ -33,8 +35,11 @@ def get_match_history(start_at_match_id, end_at_match_id, matches_requested, con
     match_ids = map(lambda x: x['match_id'], result)
     if end_at_match_id:
         match_ids = filter(lambda x: x >= end_at_match_id, match_ids)
+
+    match_ids = filter(lambda x: pd.read_sql('SELECT match_id FROM match_history WHERE match_id = {}'.format(x), con).empty, match_ids) # filter ones we already have
     if len(match_ids) == 0:
         return
+
     argses = [(get_match_details, match_id, con) for match_id in match_ids]
     next_match_id = min(match_ids) - 1
     hist_args = (get_match_history, next_match_id, end_at_match_id, matches_requested, con)
