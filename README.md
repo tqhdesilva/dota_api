@@ -12,7 +12,5 @@ python get_dota_match_history.py append <db_name> <start> <stop>
 Keep in mind that the get_match_history endpoint won't always work with older matches(it'll return an empty list).
 
 Run job_loop to continuously run queries on get_match_history.
-
-python job_loop.py <db_name>
-
-is the common usage to just grab the most recent matches.
+`python job_loop.py <db_name>`
+is the correct usage to just grab the most recent matches.

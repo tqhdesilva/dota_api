@@ -2,13 +2,12 @@
 # use duration = 0 for no time limit, start_matcH_id = 0 for no start_match_id
 # need to test end_seq_num
 # python data/multithreading.py append dota2_draft 100 3460288805 3460288707
-import dota2api
 from threading import Thread
 from Queue import Queue, Empty, PriorityQueue
 import time
 import sys
 import os
-from api_helpers import api_call, get_match_history
+from api_helpers import api_call
 from db_helpers import connect, build_db_match_history, build_db_match_details
 
 def task(in_q, out_q, con):
