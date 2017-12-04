@@ -56,7 +56,7 @@ class Scheduler(object):
         self.task_queue = Queue()
         self.heap = PriorityQueue()
         self.thread = Thread(target=self.run_tasks)
-        self.workers = [Worker(self.task_queue, self.heap, task) for i in xrange(n_workers)]
+        self.workers = [Worker(self.task_queue, self.heap, task) for i in range(n_workers)]
         self.thread.daemon = True
         self.alive = True
         self.thread.start()
