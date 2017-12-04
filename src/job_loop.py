@@ -1,3 +1,4 @@
+"""Execute get_dota_match_history and sleep two minutes on failure."""
 import os
 import sys
 import time
@@ -9,7 +10,6 @@ if __name__ == '__main__':
         db_name = sys.argv[1]
     except IndexError:
         db_name = 'dota2_draft'
-    #db_name = 'dota2_draft' # just for hydrogen
     with open(os.path.expanduser('~/.pgpass')) as f:
         for line in f:
             host, port, db, user, password = [x.strip() for x in line.split(':')]

@@ -134,9 +134,7 @@ def getter(func, *args):
 
 
 def append_history(start_at_match_id, end_at_match_id, n_workers, con):
-    """Append data to database by get match history endpoint.
-
-    """
+    """Append data to database by get match history endpoint."""
     scheduler = Scheduler(n_workers=n_workers, schedule=1, task=getter)
     time0 = time.time()
     args = (get_match_history, start_at_match_id, end_at_match_id, 1000, con)
